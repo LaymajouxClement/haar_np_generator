@@ -14,6 +14,11 @@ class GeneratorPage(tk.Frame):
         self.images = {}
         self.h = self.controller.h # app heigth
         self.w = self.controller.w # app width
+        self.nbRects = 0
+        self.rects = {}
+        self.rectX = -1
+        self.rectY = -1
+
         #Menu Button
         self.menu_button = tk.Button(self, text="Menu",command=lambda: controller.show_frame(MenuPage.MenuPage))
         self.menu_button.grid(row = 0, column = 0)
@@ -43,6 +48,22 @@ class GeneratorPage(tk.Frame):
         #Cancel Button
         self.cancel_button = tk.Button(self, text="Annuler")
         self.cancel_button.grid(row = 3, column = 1)
+
+        #binding for mouse motion
+        self.canvas.bind("<Button-1>", self.click)
+
+    def click(self,event):
+        if self.rectX!= event.x and self.rectY!=event.y:
+            if self.rectX==-1 or self.rectY==-1: # first initialization
+                self.rectX = event.x
+                self.rectY = event.y
+            else:
+                self.canvas.create_rectangle((self.rectX, self.rectY), (event.x, event.y))
+                self.rectX=-1
+                self.rectY=-1
+        else: # do nothing
+            pass
+
 
     def updateImg(self):
         directory = os.path.join(self.menu.save_path.get(),'data')
@@ -80,6 +101,9 @@ class GeneratorPage(tk.Frame):
         self.canvas:tk.Canvas = tk.Canvas(self, cursor="tcross",width= self.w*70/100, height= self.h*70/100)
         self.canvas.create_image(0,0,anchor=tk.NW,image=self.imgTk)
         self.canvas.grid(row=2,column=3)
+
+        #binding for mouse motion
+        self.canvas.bind("<Button-1>", self.click)
 
 
 
