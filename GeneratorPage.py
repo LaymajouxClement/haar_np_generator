@@ -3,7 +3,7 @@ import MenuPage
 import TrainPage
 import cv2
 import os
-from PIL import Image,ImageTk
+from PIL import Image,ImageTk,ImageDraw
 
 class GeneratorPage(tk.Frame):
     def __init__(self, parent, controller):
@@ -14,10 +14,12 @@ class GeneratorPage(tk.Frame):
         self.images = {}
         self.h = self.controller.h # app heigth
         self.w = self.controller.w # app width
-        self.nbRects = 0
+        self.nbImage = 0
         self.rects = {}
+        self.image_rects = []
         self.rectX = -1
         self.rectY = -1
+        self.directory = ""
 
         #Menu Button
         self.menu_button = tk.Button(self, text="Menu",command=lambda: controller.show_frame(MenuPage.MenuPage))
@@ -38,27 +40,46 @@ class GeneratorPage(tk.Frame):
         self.canvas.grid(row=2,column=3)
 
         #Validate Button
-        self.validate_button = tk.Button(self, text="Valider")
+        self.validate_button = tk.Button(self, text="Valider",command=lambda: self.validate())
         self.validate_button.grid(row = 1, column =1)
 
-        #Erase Button
-        self.erase_button = tk.Button(self, text="Effacer")
-        self.erase_button.grid(row = 2, column = 1)
+        #Erase Button TODO
+        # self.erase_button = tk.Button(self, text="Effacer")
+        # self.erase_button.grid(row = 2, column = 1)
 
-        #Cancel Button
-        self.cancel_button = tk.Button(self, text="Annuler")
-        self.cancel_button.grid(row = 3, column = 1)
+        #Cancel Button TODO
+        # self.cancel_button = tk.Button(self, text="Annuler")
+        # self.cancel_button.grid(row = 3, column = 1)
 
         #binding for mouse motion
         self.canvas.bind("<Button-1>", self.click)
 
+    def validate(self,isPhoto:bool=True):
+        self.rects[self.nbImage] = self.image_rects # warning see if it's an hard copy
+        self.image_rects = []
+        
+        #save photo in data
+        self.img.save(os.path.join(self.directory,'positive',str(self.nbImage)+'.png'),'png')
+        # transform canva to negative canva
+        img = ImageDraw.Draw(self.img)
+        for rect in self.rects[self.nbImage]:
+            img.rectangle(rect,fill="white")
+        self.img.save(os.path.join(self.directory,'negative',str(self.nbImage)+'.png'),'png')
+        #TODO ! ! ! UPDATE DAT FILES
+
+        self.nbImage = self.nbImage +1
+        if isPhoto==True:#after validate return to menu for a photo
+            self.controller.show_frame(MenuPage.MenuPage)
+            self.canvas
+
     def click(self,event):
         if self.rectX!= event.x and self.rectY!=event.y:
-            if self.rectX==-1 or self.rectY==-1: # first initialization
+            if self.rectX==-1 or self.rectY==-1: # first initialization / every 2 clicks
                 self.rectX = event.x
                 self.rectY = event.y
             else:
                 self.canvas.create_rectangle((self.rectX, self.rectY), (event.x, event.y))
+                self.image_rects.append((self.rectX, self.rectY,event.x, event.y))
                 self.rectX=-1
                 self.rectY=-1
         else: # do nothing
@@ -66,12 +87,14 @@ class GeneratorPage(tk.Frame):
 
 
     def updateImg(self):
-        directory = os.path.join(self.menu.save_path.get(),'data')
+        self.directory = self.menu.save_path.get()
         
         try:
-            # creating a folder named data
-            if not os.path.exists(directory):
-                os.makedirs(directory)
+            # creating folders if needed
+            if not os.path.exists(os.path.join(self.directory,"positive")):
+                os.makedirs(os.path.join(self.directory,"positive"))
+            if not os.path.exists(os.path.join(self.directory,"negative")):
+                os.makedirs(os.path.join(self.directory,"negative"))
         except OSError:
             print ('Error: Creating directory')
 
@@ -82,25 +105,16 @@ class GeneratorPage(tk.Frame):
             self.imgTk = ImageTk.PhotoImage(image=self.img)
         except:#video
             cam = cv2.VideoCapture(self.menu.file.name)
-            currentframe = 0
-            while(True):
-                # reading from frame
-                ret,frame = cam.read()
-                if ret:
-                    # if video is still left continue creating images
-                    name = str(currentframe) + '.jpg'
-                    # increasing counter so that it will
-                    # show how many frames are created
-                    self.images[currentframe] = currentframe
-                    currentframe += 1
-                else:
-                    break
-            self.img = self.images["0.jpg"] #get the first image
+
+            _,frame = cam.read()
+            self.img = Image.fromarray(frame)
+            self.img.thumbnail((self.w*70/100,self.h*70/100), Image.ANTIALIAS)
+            self.imgTk = ImageTk.PhotoImage(image=self.img)
 
         self.canvas.destroy()
         self.canvas:tk.Canvas = tk.Canvas(self, cursor="tcross",width= self.w*70/100, height= self.h*70/100)
         self.canvas.create_image(0,0,anchor=tk.NW,image=self.imgTk)
-        self.canvas.grid(row=2,column=3)
+        self.canvas.grid(row=2,column=3,padx=(0,0),pady=(0,0))
 
         #binding for mouse motion
         self.canvas.bind("<Button-1>", self.click)
